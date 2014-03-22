@@ -20,7 +20,7 @@ Only saves &amp; removes albums with 4 tracks or more, where each track has more
 well-identified albums from the context menu.
 </p>
 """
-PLUGIN_VERSION = "0.1"
+PLUGIN_VERSION = "0.2"
 PLUGIN_API_VERSIONS = ["0.15"]
 
 import functools
