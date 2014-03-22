@@ -23,6 +23,7 @@ well-identified albums from the context menu.
 PLUGIN_VERSION = "0.1"
 PLUGIN_API_VERSIONS = ["0.15"]
 
+import functools
 
 from PyQt4 import QtCore
 from picard.album import Album
@@ -60,26 +61,27 @@ class SaveMatches(BaseAction):
                 print 'Track %s not similar enough ' % track.metadata['title']
                 return
             files_to_save.append(track.linked_files[0])
-        cancelled = [False]
-        def next_action(result=None, error=None):
-            if error is not None:
-                print "Error!"
-                print error
-                cancelled[0] = True
-            else:
-                # How do I know if the save failed, anyway?
-                print "Saved OK!"
-            if files_to_save:
-                print "On to save " + files_to_save[0].metadata['title']
-                files_to_save.pop(0).save(next_action, self.config.setting)
-            else:
-                if not cancelled[0]:
+
+        def saving_finished(file_to_save, album, original_saving_finished,
+                            result=None, error=None):
+            """Un-monkeypatch _saving_finished, and remove album if done"""
+            file_to_save._saving_finished = original_saving_finished
+            original_saving_finished(result, error)
+            if not error:
+                files_to_save.remove(file_to_save)
+                if not files_to_save:
                     album.tagger.remove_album(album)
-                    cancelled[0] = True
                     print 'Album complete: ' + album.metadata['album']
-                else:
-                    print 'Saving failed: ' + album.metadata['album']
-        next_action()
+            else:
+                print 'Error saving file "%s", will not remove album' % (
+                    file_to_save.metadata['title'])
+
+        for file_to_save in files_to_save:
+            file_to_save._saving_finished = functools.partial(
+                saving_finished, file_to_save, album,
+                file_to_save._saving_finished)
+            print "On to save " + file_to_save.metadata['title']
+            file_to_save.save()
 
 register_album_action(SaveMatches())
 
